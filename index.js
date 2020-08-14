@@ -15,7 +15,7 @@ import accepts from 'accepts';
 import bytes from 'bytes';
 import compressible from 'compressible';
 import {Duplex, PassThrough, Readable, Writable} from 'stream';
-import lruCache from 'lru-cache';
+import LruCache from 'lru-cache';
 import multipipe from 'multipipe';
 import onHeaders from 'on-headers';
 import util from 'util';
@@ -33,7 +33,6 @@ const brotli = brotliCompat();
  * Module exports.
  */
 
-export default compression;
 export const filter = shouldCompress;
 
 /**
@@ -59,7 +58,7 @@ function stubTrue() {
  * @public
  */
 
-function compression(options) {
+export default function compression(options) {
   const opts = options || {};
 
   // options
@@ -322,11 +321,9 @@ function chunkLength(chunk, encoding) {
 function shouldCompress(req, res) {
   const type = res.getHeader('Content-Type');
 
-  if (type === undefined || !compressible(type)) {
-    return false;
-  }
+  return !(type === undefined || !compressible(type));
 
-  return true;
+
 }
 
 /**
@@ -345,7 +342,7 @@ function shouldTransform(req, res) {
 
 function createCache(size, zopfli) {
   const index = {};
-  const lru = new lruCache({
+  const lru = new LruCache({
     max: size,
     length: function (item, key) {
       return item.buffer.length +
