@@ -22,9 +22,6 @@ import util from 'util';
 import vary from 'vary';
 import zlib from 'zlib';
 
-import debug from 'debug';
-debug = debug('compression');
-
 import brotliCompat from './brotli-compat';
 
 // These are factory functions because they dynamically require dependencies
@@ -163,7 +160,6 @@ function compression(options) {
     };
 
     function nocompress(msg) {
-      debug('no compression: %s', msg);
       addListeners(res, _on, listeners);
       listeners = null;
     }
@@ -241,7 +237,6 @@ function compression(options) {
       // the result
       if (!stream) {
         // compression stream
-        debug('%s compression', method);
         switch (method) {
           case 'br':
             stream = brotli.compressStream(brotliOpts);
@@ -328,7 +323,6 @@ function shouldCompress(req, res) {
   const type = res.getHeader('Content-Type');
 
   if (type === undefined || !compressible(type)) {
-    debug('%s not compressible', type);
     return false;
   }
 
