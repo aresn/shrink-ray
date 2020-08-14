@@ -56,10 +56,6 @@
     "proxyquire": "^2.1.0",
     "supertest": "^4.0.0"
   },
-  "peerDependencies": {
-    "iltorb": "^2.0.0",
-    "node-zopfli-es": "^1.0.3"
-  },
   "engines": {
     "node": ">=8.0"
   },

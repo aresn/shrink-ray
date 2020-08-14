@@ -11,31 +11,21 @@
  * MIT Licensed
  */
 
-const accepts      = require('accepts');
-const bytes        = require('bytes');
-const compressible = require('compressible');
-const debug        = require('debug')('compression');
-const Duplex       = require('stream').Duplex;
-const lruCache     = require('lru-cache');
-const multipipe    = require('multipipe');
-const onHeaders    = require('on-headers');
-const Readable     = require('stream').Readable;
-const util         = require('util');
-const vary         = require('vary');
-const Writable     = require('stream').Writable;
-const zlib         = require('zlib');
+import accepts from 'accepts';
+import bytes from 'bytes';
+import compressible from 'compressible';
+import {Duplex, Readable, Writable, PassThrough} from 'stream';
+import lruCache from 'lru-cache';
+import multipipe from 'multipipe';
+import onHeaders from 'on-headers';
+import util from 'util';
+import vary from 'vary';
+import zlib from 'zlib';
 
-/**
- * Optional dependencies handling. If some binary dependencies cannot build in
- * this environment, or are incompatible with this version of Node, the rest of
- * the module should work!
- * Known dependency issues:
- *  - node-zopfli-es is not compatible with Node <8.11.
- *  - iltorb is not required for Node >= 11.8, whose zlib has brotli built in.
- */
+import debug from 'debug';
+debug = debug('compression');
 
-const brotliCompat = require('./brotli-compat');
-const zopfliCompat = require('./zopfli-compat');
+import brotliCompat from './brotli-compat';
 
 // These are factory functions because they dynamically require dependencies
 // and may log errors.
@@ -76,36 +66,35 @@ function compression(options) {
   const opts = options || {};
 
   // options
-  const zopfli = zopfliCompat('useZopfliForGzip' in opts ? opts.useZopfliForGzip : true);
-  const filter  = opts.filter || shouldCompress;
+  const filter = opts.filter || shouldCompress;
   let threshold = bytes.parse(opts.threshold);
 
   if (threshold === null) {
     threshold = 1024;
   }
 
-  const brotliOpts   = opts.brotli || {};
+  const brotliOpts = opts.brotli || {};
   brotliOpts.quality = brotliOpts.quality || BROTLI_DEFAULT_QUALITY;
 
-  const zlibOpts     = opts.zlib || {};
+  const zlibOpts = opts.zlib || {};
   const zlibOptNames = ['flush', 'chunkSize', 'windowBits', 'level', 'memLevel', 'strategy', 'dictionary'];
   zlibOptNames.forEach(function (option) {
     zlibOpts[option] = zlibOpts[option] || opts[option];
   });
 
   if (!opts.hasOwnProperty('cacheSize')) opts.cacheSize = '128mB';
-  const cache = opts.cacheSize ? createCache(bytes(opts.cacheSize.toString()), zopfli) : null;
+  const cache = opts.cacheSize ? createCache(bytes(opts.cacheSize.toString()), zlib) : null;
 
   const shouldCache = opts.cache || stubTrue;
 
   return function compression(req, res, next) {
-    let ended     = false;
+    let ended = false;
     let length;
     let listeners = [];
     let stream;
 
-    const _end   = res.end;
-    const _on    = res.on;
+    const _end = res.end;
+    const _on = res.on;
     const _write = res.write;
 
     // flush
@@ -226,9 +215,9 @@ function compression(options) {
       // lastly, if brotli is unavailable or unsupported on this platform,
       // the object will be falsy.
       const method = (brotli && contentType !== 'text/event-stream' && accept.encoding('br')) ||
-                     accept.encoding('gzip') ||
-                     accept.encoding('deflate') ||
-                     accept.encoding('identity');
+        accept.encoding('gzip') ||
+        accept.encoding('deflate') ||
+        accept.encoding('identity');
 
       // negotiation failed
       if (!method || method === 'identity') {
@@ -237,7 +226,7 @@ function compression(options) {
       }
 
       // do we have this coding/url/etag combo in the cache?
-      const etag      = res.getHeader('ETag') || null;
+      const etag = res.getHeader('ETag') || null;
       const cacheable = cache && shouldCache(req, res) && etag && res.statusCode >= 200 && res.statusCode < 300;
       if (cacheable) {
         const buffer = cache.lookup(method, req.url, etag);
@@ -357,30 +346,30 @@ function shouldTransform(req, res) {
   // Don't compress for Cache-Control: no-transform
   // https://tools.ietf.org/html/rfc7234#section-5.2.2.4
   return !cacheControl ||
-         !cacheControlNoTransformRegExp.test(cacheControl);
+    !cacheControlNoTransformRegExp.test(cacheControl);
 }
 
 function createCache(size, zopfli) {
   const index = {};
-  const lru   = new lruCache({
-                           max:     size,
-                           length:  function (item, key) {
-                             return item.buffer.length +
-                                    item.coding.length +
-                                    2 *
-                                    (item.url.length + item.etag.length);
-                           },
-                           dispose: function (key, item) {
-                             // remove this particular representation (by etag)
-                             delete index[item.coding][item.url][item.etag];
+  const lru = new lruCache({
+    max: size,
+    length: function (item, key) {
+      return item.buffer.length +
+        item.coding.length +
+        2 *
+        (item.url.length + item.etag.length);
+    },
+    dispose: function (key, item) {
+      // remove this particular representation (by etag)
+      delete index[item.coding][item.url][item.etag];
 
-                             // if there are no more representations of the url left, remove the
-                             // entry for the url.
-                             if (Object.keys(index[item.coding][item.url]).length === 0) {
-                               delete index[item.coding][item.url];
-                             }
-                           }
-                         });
+      // if there are no more representations of the url left, remove the
+      // entry for the url.
+      if (Object.keys(index[item.coding][item.url]).length === 0) {
+        delete index[item.coding][item.url];
+      }
+    }
+  });
 
   return {
     add: function (coding, url, etag, buffer) {
@@ -396,14 +385,14 @@ function createCache(size, zopfli) {
 
       const item = {
         coding: coding,
-        url:    url,
-        etag:   etag,
+        url: url,
+        etag: etag,
         buffer: buffer
       };
-      const key  = {};
+      const key = {};
 
-      index[coding]            = index[coding] || {};
-      index[coding][url]       = index[coding][url] || {};
+      index[coding] = index[coding] || {};
+      index[coding][url] = index[coding][url] || {};
       index[coding][url][etag] = key;
 
       lru.set(key, item);
@@ -499,7 +488,6 @@ function getBestQualityReencoder(coding, zopfli) {
       // the travis machines. until we can figure this out, just offer a passthrough,
       // and don't re-encode deflate.
       // return multipipe(zlib.createInflate(), zopfli.createDeflate())
-      const PassThrough = require('stream').PassThrough;
       return new PassThrough();
     case 'br':
       return multipipe(brotli.decompressStream(), brotli.compressStream());
