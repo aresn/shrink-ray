@@ -14,7 +14,7 @@
 import accepts from 'accepts';
 import bytes from 'bytes';
 import compressible from 'compressible';
-import {Duplex, Readable, Writable, PassThrough} from 'stream';
+import {Duplex, PassThrough, Readable, Writable} from 'stream';
 import lruCache from 'lru-cache';
 import multipipe from 'multipipe';
 import onHeaders from 'on-headers';
@@ -33,8 +33,8 @@ const brotli = brotliCompat();
  * Module exports.
  */
 
-module.exports = compression;
-module.exports.filter = shouldCompress;
+export default compression;
+export const filter = shouldCompress;
 
 /**
  * Module variables.
